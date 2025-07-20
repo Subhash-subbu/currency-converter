@@ -1,0 +1,67 @@
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Scanner;
+
+public class CurrencyConverter {
+    private static final String API_KEY = "YOUR_API_KEY"; // Replace with your ExchangeRate-API key
+    private static final String API_URL = "https://v6.exchangerate-api.com/v6/";
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Welcome to the Currency Converter!");
+        
+        System.out.print("Enter the base currency (e.g., USD, EUR, GBP): ");
+        String baseCurrency = scanner.nextLine().toUpperCase();
+        
+        System.out.print("Enter the target currency (e.g., USD, EUR, GBP): ");
+        String targetCurrency = scanner.nextLine().toUpperCase();
+
+        System.out.print("Enter the amount to convert: ");
+        double amount = scanner.nextDouble();
+
+        try {
+            double exchangeRate = getExchangeRate(baseCurrency, targetCurrency);
+            double convertedAmount = amount * exchangeRate;
+
+            System.out.printf("%.2f %s = %.2f %s\n", amount, baseCurrency, convertedAmount, targetCurrency);
+        } catch (Exception e) {
+            System.out.println("An error occurred while fetching the exchange rate: " + e.getMessage());
+        }
+
+        scanner.close();
+    }
+
+    private static double getExchangeRate(String baseCurrency, String targetCurrency) throws Exception {
+        String urlStr = API_URL + API_KEY + "/latest/" + baseCurrency;
+        URL url = new URL(urlStr);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setRequestMethod("GET");
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode != 200) {
+            throw new RuntimeException("HTTP response code: " + responseCode);
+        }
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+        String inputLine;
+        StringBuilder response = new StringBuilder();
+
+        while ((inputLine = in.readLine()) != null) {
+            response.append(inputLine);
+        }
+        in.close();
+
+        JSONObject jsonResponse = new JSONObject(response.toString());
+        if (!jsonResponse.getString("result").equals("success")) {
+            throw new RuntimeException("API response error: " + jsonResponse.getString("error-type"));
+        }
+
+        JSONObject conversionRates = jsonResponse.getJSONObject("conversion_rates");
+        return conversionRates.getDouble(targetCurrency);
+    }
+}
